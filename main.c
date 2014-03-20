@@ -30,28 +30,22 @@
 #include <netpacket/packet.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 #include "lib/shortcuts/shortcuts.h"
 
-#define ETH_P_H3C         0X888E
+#define ETH_P_H3C         0x888E
 
-#define ETHERTYPE_PAE     0x888e
 #define EAPOL_VERSION     1
 #define EAPOL_EAPPACKET   0
-
 #define EAPOL_START       1
-#define EAPOL_LOGOFF      2
-#define EAPOL_KEY         3
-#define EAPOL_ASF         4
 
 #define EAP_REQUEST       1
 #define EAP_RESPONSE      2
 #define EAP_SUCCESS       3
 #define EAP_FAILURE       4
-
 #define EAP_TYPE_ID       1
 #define EAP_TYPE_MD5      4
-#define EAP_TYPE_H3C      7
 
 void display_binary_data(const char packet[])
 {
@@ -213,16 +207,22 @@ void eap_auth_handle(char packet[], const eap_auth_t *eapauth)
 int main(int argc, const char *argv[])
 {
   if (getuid() != 0) {
-    printf("Need root privilege to run link layer level application\n");
+    fprintf(stderr, "Need root privilege to run link layer level application\n");
     exit(EXIT_FAILURE);
   }
+  
+  if (argc < 3) {
+    fprintf(stderr, "Usage: ${program} ${username}, ${password}");
+    exit(EXIT_FAILURE);
+  }
+
   char packet[BUFSIZ] = "";
   eap_auth_t eapauth = {
-    .username = "",
-    .password = "",
     .device_name = "eth0",
     .version_info = "\x06\x07""bjQ7SE8BZ3MqHhs3clMregcDY3Y=\x20\x20"
   };
+  strcpy(eapauth.username, argv[1]);
+  strcpy(eapauth.password, argv[2]);
   eapauth.version_info_len = strlen(eapauth.version_info);
   eapauth.socket = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_H3C));
   eapauth.adr.sll_family   = AF_PACKET;
