@@ -47,7 +47,8 @@
 #define EAP_TYPE_ID       1
 #define EAP_TYPE_MD5      4
 
-void display_binary_data(const char packet[])
+#if DEBUG_DISPLAY_BINARY_DATA == 1
+static void display_binary_data(const char packet[])
 {
   size_t i = 0, j;
   const size_t col = 6, row = 10;
@@ -58,6 +59,7 @@ void display_binary_data(const char packet[])
     printf("\n");
   }
 }
+#endif
 
 typedef struct {
   char username[BUFSIZ], password[BUFSIZ];
@@ -75,10 +77,10 @@ char *make_ethernet_header(char packet[], const int socket, const char devname[]
   if (!strcmp("", macaddr)) {
     strcpy(ifr.ifr_name, devname);
     if (ioctl(socket, SIOCGIFHWADDR, &ifr))
-      perror("ioctl for mac addr");
+      perror("Error::ioctl for mac addr");
     memcpy(macaddr, ifr.ifr_hwaddr.sa_data, ETH_ALEN);
   }
-  memcpy(packet, "\x01\x80\xc2\x00\x00\x03", ETH_ALEN);
+  memset(packet, 0, ETH_ALEN);
   memcpy(packet + ETH_ALEN, macaddr, ETH_ALEN);
   *(uint16_t *) &(packet[2 * ETH_ALEN]) = htons(ETH_P_H3C);
   return packet + 2 * ETH_ALEN + sizeof(uint16_t);
@@ -94,36 +96,21 @@ char *make_eapol(char *packet, const uint8_t type, const char payload[],
   return packet + 4 + payload_len;
 }
 
-char *make_eap(char packet[], const uint8_t code, const uint8_t id,
-    const uint8_t type, const char *data, const size_t datalen)
-{
-  *(uint8_t *) &(packet[0]) = code;
-  *(uint8_t *) &(packet[1]) = id;
-  if (code == EAP_SUCCESS || code == EAP_FAILURE) {
-    *(uint16_t *) &(packet[2]) = htons(4);
-  } else {
-    *(uint16_t *) &(packet[2]) = htons(5 + datalen);
-    *(uint8_t *)  &(packet[4]) = type;
-    memcpy(packet + 5, data, datalen);
-  }
-  return packet + 5 + datalen;
-}
-
 char *make_eapol_and_eap(char *packet, const uint8_t eapol_type,
     const uint8_t code, const uint8_t id, const uint8_t eap_type,
     const char data[], const size_t datalen)
 {
-  packet[0] = EAPOL_VERSION; // make EAPOL
+  packet[0] = EAPOL_VERSION;
   packet[1] = eapol_type;
-  packet[4] = code; // make EAP
+  packet[4] = code;
   packet[5] = id;
   if (code == EAP_SUCCESS || code == EAP_FAILURE) {
-    *(uint16_t *) &(packet[2]) = htons(4); // EAPOL
-    *(uint16_t *) &(packet[6]) = htons(4); // EAP
+    *(uint16_t *) &(packet[2]) = htons(4);
+    *(uint16_t *) &(packet[6]) = htons(4);
     return packet + 8;
   } else {
-    *(uint16_t *) &(packet[2]) = htons(5 + datalen); // EAPOL
-    *(uint16_t *) &(packet[6]) = htons(5 + datalen); // EAP
+    *(uint16_t *) &(packet[2]) = htons(5 + datalen);
+    *(uint16_t *) &(packet[6]) = htons(5 + datalen);
     packet[8] = eap_type;
     memcpy(packet + 9, data, datalen);
     return packet + 9 + datalen;
@@ -133,21 +120,19 @@ char *make_eapol_and_eap(char *packet, const uint8_t eapol_type,
 void eap_auth_handle(char packet[], const eap_auth_t *eapauth)
 {
   char *eapol = packet + ETHER_HDR_LEN, *end = NULL;
-  uint8_t /* vers = eapol[0], */ type = eapol[1];
-  // uint16_t eapol_len = ntohs(*(uint16_t *) &(eapol[2]));
+  uint8_t type = eapol[1];
   if (type != EAPOL_EAPPACKET)
-    fprintf(stderr, "%s\n", "Got unknown EAP type!");
+    fprintf(stderr, "%s\n", "Error::Got unknown EAP type!");
   uint8_t code = eapol[4], id = eapol[5];
-  // uint16_t eap_len = ntohs(*(uint16_t *) &(eapol[6]));
 
   if (code == EAP_SUCCESS) {
-    printf("Got EAP Success\n");
+    printf("In ::Got EAP Success\n");
   }
   else if (code == EAP_FAILURE) {
-    printf("Got EAP Failure\n");
+    printf("In ::Got EAP Failure\n");
   }
   else if (code == EAP_RESPONSE) {
-    printf("Got EAP Response\n");
+    printf("In ::Got EAP Response\n");
   }
   else if (code == EAP_REQUEST) {
     uint8_t reqtype = eapol[8];
@@ -155,8 +140,8 @@ void eap_auth_handle(char packet[], const eap_auth_t *eapauth)
     char data[BUFSIZ] = {'\0'};
     size_t datalen = 0;
 
-    if (reqtype == EAP_TYPE_ID) { // Send response for identity
-      printf("%s\n", "Got EAP request for identity");
+    if (reqtype == EAP_TYPE_ID) {
+      printf("%s\n", "In ::recv EAP_REQUEST ID");
 
       memcpy(data, eapauth->version_info, eapauth->version_info_len);
       strcpy(data + eapauth->version_info_len, eapauth->username);
@@ -165,40 +150,32 @@ void eap_auth_handle(char packet[], const eap_auth_t *eapauth)
       eapol = make_ethernet_header(packet, eapauth->socket, eapauth->device_name);
       end = make_eapol_and_eap(eapol, EAPOL_EAPPACKET, EAP_RESPONSE, id,
           EAP_TYPE_ID, data, datalen);
-      display_binary_data(packet);
       sendto(eapauth->socket, packet, end - packet, 0,
           (const struct sockaddr *) &eapauth->adr, sizeof(eapauth->adr));
-      perror("sendto EAP response for identity");
+      perror("Out::send EAP_RESPONSE ID");
     }
     else if (reqtype == EAP_TYPE_MD5) {
-      printf("%s\n", "Got EAP request for MD5");
+      printf("%s\n", "In ::recv EAP_REQUEST MD5");
 
-      size_t i;
       data[0] = 16;
-      // printf("md5data length: %d\n", reqdata[0]);
+      size_t i;
       for (i = 0; i < 16; i++) {
         data[i + 1] = (i >= strlen(eapauth->password)) ? '\0'
           : eapauth->password[i];
-        *(unsigned char *) &(data[i + 1]) =
-          ((unsigned char) (data[i + 1])) ^ ((unsigned char) (reqdata[i + 1]));
-        // printf("%#4.2x ", (unsigned char) data[i + 1]);
+        data[i + 1] = (unsigned char) data[i + 1] ^ (unsigned char) reqdata[i + 1];
       }
-      // printf("\n");
       strcpy(data + 17, eapauth->username);
       datalen = 17 + strlen(eapauth->username);
 
       eapol = make_ethernet_header(packet, eapauth->socket, eapauth->device_name);
-      // display_binary_data(packet);
-      // printf("End\n");
       end = make_eapol_and_eap(eapol, EAPOL_EAPPACKET, EAP_RESPONSE, id,
           EAP_TYPE_MD5, data, datalen);
-      // display_binary_data(packet);
       sendto(eapauth->socket, packet, end - packet, 0,
           (struct sockaddr *) &eapauth->adr, sizeof(eapauth->adr));
-      perror("sendto EAP response for MD5");
+      perror("Out::send EAP_RESPONSE MD5");
     }
     else {
-      fprintf(stderr, "%s\n", "Unknown request type");
+      fprintf(stderr, "%s\n", "Error::Unknown request type");
       return;
     }
   }
@@ -236,16 +213,12 @@ int main(int argc, const char *argv[])
   char *const eap   = make_eapol(eapol, EAPOL_START, "", 0);
   sendto(eapauth.socket, packet, eap - packet, 0,
       (const struct sockaddr *) &eapauth.adr, sizeof(eapauth.adr));
-  perror("sendto EAPOL_START");
+  perror("Out::send EAPOL_START");
   while (1) {
     struct sockaddr_ll sadr = {};
     socklen_t slen = 0;
     memset(packet, 0, sizeof(packet));
     recvfrom(eapauth.socket, packet, BUFSIZ, 0, (struct sockaddr *) &sadr, &slen);
-    perror("recv");
-#if DEBUG_DISPLAY_BINARY_DATA == 1
-    display_binary_data(packet);
-#endif
     eap_auth_handle(packet, &eapauth);
   }
   return EXIT_SUCCESS;
