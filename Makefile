@@ -1,9 +1,9 @@
 CC = gcc
 CFLG = -c -g -Wall
 LDFLG = -lpthread
-SRC = main.c myh3c.c lib/daemon.c
+SRC = main.c myh3c.c lib/daemon.c user/user.c
 OBJ = $(SRC:.c=.o)
-EXE = a.out
+EXE = myh3c
 
 $(EXE): $(OBJ) 
 	$(CC) $(OBJ) $(LDFLG) -o $@

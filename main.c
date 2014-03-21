@@ -24,6 +24,7 @@
 #include "lib/daemon.h"
 #include "lib/shortcuts/shortcuts.h"
 #include "myh3c.h"
+#include "user/user.h"
 
 int main(int argc, const char *argv[])
 {
@@ -31,14 +32,16 @@ int main(int argc, const char *argv[])
     fprintf(stderr, "Need root privilege to run link layer level application\n");
     exit(EXIT_FAILURE);
   }
-
+#if 0
   if (argc < 3) {
     fprintf(stderr, "Usage: ${program} ${username}, ${password}");
     exit(EXIT_FAILURE);
   }
-
+#endif
+  user_t user = read_user();
   myh3c_t myh3c = {};
-  myh3c_error_t err = myh3c_init(&myh3c, "eth0", argv[1], argv[2]);
+  myh3c_error_t err = myh3c_init(&myh3c, user.device_name, user.username,
+      user.password);
   if (err)
     goto main_exit;
   err = myh3c_send_start(&myh3c);
