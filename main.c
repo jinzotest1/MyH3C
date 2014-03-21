@@ -15,171 +15,14 @@
  * Copyright (C) Junyu Wu, shibuyanorailgun@gmail.com, 2014
  */
 
-#define DEBUG_DISPLAY_BINARY_DATA 0
-
-#include <assert.h>
-#include <errno.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <arpa/inet.h>
-#include <net/if.h>
-#include <netinet/ether.h>
-#include <netpacket/packet.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
 #include <unistd.h>
 
 #include "lib/shortcuts/shortcuts.h"
-
-#define ETH_P_H3C         0x888E
-
-#define EAPOL_VERSION     1
-#define EAPOL_EAPPACKET   0
-#define EAPOL_START       1
-
-#define EAP_REQUEST       1
-#define EAP_RESPONSE      2
-#define EAP_SUCCESS       3
-#define EAP_FAILURE       4
-#define EAP_TYPE_ID       1
-#define EAP_TYPE_MD5      4
-
-#if DEBUG_DISPLAY_BINARY_DATA == 1
-static void display_binary_data(const char packet[])
-{
-  size_t i = 0, j;
-  const size_t col = 6, row = 10;
-  for (; i < row; i++) {
-    for (j = 0; j < col; j++) {
-      printf("%#8.2x", (unsigned char) packet[i * col + j]);
-    }
-    printf("\n");
-  }
-}
-#endif
-
-typedef struct {
-  char username[BUFSIZ], password[BUFSIZ];
-  char device_name[BUFSIZ];
-  char version_info[BUFSIZ];
-  size_t version_info_len;
-  int socket;
-  struct sockaddr_ll adr;
-} eap_auth_t;
-
-char *make_ethernet_header(char packet[], const int socket, const char devname[])
-{
-  static char macaddr[BUFSIZ] = "";
-  struct ifreq ifr = {};
-  if (!strcmp("", macaddr)) {
-    strcpy(ifr.ifr_name, devname);
-    if (ioctl(socket, SIOCGIFHWADDR, &ifr))
-      perror("Error::ioctl for mac addr");
-    memcpy(macaddr, ifr.ifr_hwaddr.sa_data, ETH_ALEN);
-  }
-  memset(packet, 0, ETH_ALEN);
-  memcpy(packet + ETH_ALEN, macaddr, ETH_ALEN);
-  *(uint16_t *) &(packet[2 * ETH_ALEN]) = htons(ETH_P_H3C);
-  return packet + 2 * ETH_ALEN + sizeof(uint16_t);
-}
-
-char *make_eapol(char *packet, const uint8_t type, const char payload[],
-    const size_t payload_len)
-{
-  *(uint8_t *)  &(packet[0]) = EAPOL_VERSION;
-  *(uint8_t *)  &(packet[1]) = type;
-  *(uint16_t *) &(packet[2]) = htons(payload_len);
-  memcpy(packet + 4, payload, payload_len);
-  return packet + 4 + payload_len;
-}
-
-char *make_eapol_and_eap(char *packet, const uint8_t eapol_type,
-    const uint8_t code, const uint8_t id, const uint8_t eap_type,
-    const char data[], const size_t datalen)
-{
-  packet[0] = EAPOL_VERSION;
-  packet[1] = eapol_type;
-  packet[4] = code;
-  packet[5] = id;
-  if (code == EAP_SUCCESS || code == EAP_FAILURE) {
-    *(uint16_t *) &(packet[2]) = htons(4);
-    *(uint16_t *) &(packet[6]) = htons(4);
-    return packet + 8;
-  } else {
-    *(uint16_t *) &(packet[2]) = htons(5 + datalen);
-    *(uint16_t *) &(packet[6]) = htons(5 + datalen);
-    packet[8] = eap_type;
-    memcpy(packet + 9, data, datalen);
-    return packet + 9 + datalen;
-  }
-}
-
-void eap_auth_handle(char packet[], const eap_auth_t *eapauth)
-{
-  char *eapol = packet + ETHER_HDR_LEN, *end = NULL;
-  uint8_t type = eapol[1];
-  if (type != EAPOL_EAPPACKET)
-    fprintf(stderr, "%s\n", "Error::Got unknown EAP type!");
-  uint8_t code = eapol[4], id = eapol[5];
-
-  if (code == EAP_SUCCESS) {
-    printf("In ::Got EAP Success\n");
-  }
-  else if (code == EAP_FAILURE) {
-    printf("In ::Got EAP Failure\n");
-  }
-  else if (code == EAP_RESPONSE) {
-    printf("In ::Got EAP Response\n");
-  }
-  else if (code == EAP_REQUEST) {
-    uint8_t reqtype = eapol[8];
-    const char *reqdata = &(eapol[9]);
-    char data[BUFSIZ] = {'\0'};
-    size_t datalen = 0;
-
-    if (reqtype == EAP_TYPE_ID) {
-      printf("%s\n", "In ::recv EAP_REQUEST ID");
-
-      memcpy(data, eapauth->version_info, eapauth->version_info_len);
-      strcpy(data + eapauth->version_info_len, eapauth->username);
-      datalen = eapauth->version_info_len + strlen(eapauth->username);
-
-      eapol = make_ethernet_header(packet, eapauth->socket, eapauth->device_name);
-      end = make_eapol_and_eap(eapol, EAPOL_EAPPACKET, EAP_RESPONSE, id,
-          EAP_TYPE_ID, data, datalen);
-      sendto(eapauth->socket, packet, end - packet, 0,
-          (const struct sockaddr *) &eapauth->adr, sizeof(eapauth->adr));
-      perror("Out::send EAP_RESPONSE ID");
-    }
-    else if (reqtype == EAP_TYPE_MD5) {
-      printf("%s\n", "In ::recv EAP_REQUEST MD5");
-
-      data[0] = 16;
-      size_t i;
-      for (i = 0; i < 16; i++) {
-        data[i + 1] = (i >= strlen(eapauth->password)) ? '\0'
-          : eapauth->password[i];
-        data[i + 1] = (unsigned char) data[i + 1] ^ (unsigned char) reqdata[i + 1];
-      }
-      strcpy(data + 17, eapauth->username);
-      datalen = 17 + strlen(eapauth->username);
-
-      eapol = make_ethernet_header(packet, eapauth->socket, eapauth->device_name);
-      end = make_eapol_and_eap(eapol, EAPOL_EAPPACKET, EAP_RESPONSE, id,
-          EAP_TYPE_MD5, data, datalen);
-      sendto(eapauth->socket, packet, end - packet, 0,
-          (struct sockaddr *) &eapauth->adr, sizeof(eapauth->adr));
-      perror("Out::send EAP_RESPONSE MD5");
-    }
-    else {
-      fprintf(stderr, "%s\n", "Error::Unknown request type");
-      return;
-    }
-  }
-}
+#include "myh3c.h"
 
 int main(int argc, const char *argv[])
 {
@@ -187,39 +30,29 @@ int main(int argc, const char *argv[])
     fprintf(stderr, "Need root privilege to run link layer level application\n");
     exit(EXIT_FAILURE);
   }
-  
+
   if (argc < 3) {
     fprintf(stderr, "Usage: ${program} ${username}, ${password}");
     exit(EXIT_FAILURE);
   }
 
-  char packet[BUFSIZ] = "";
-  eap_auth_t eapauth = {
-    .device_name = "eth0",
-    .version_info = "\x06\x07""bjQ7SE8BZ3MqHhs3clMregcDY3Y=\x20\x20"
-  };
-  strcpy(eapauth.username, argv[1]);
-  strcpy(eapauth.password, argv[2]);
-  eapauth.version_info_len = strlen(eapauth.version_info);
-  eapauth.socket = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_H3C));
-  eapauth.adr.sll_family   = AF_PACKET;
-  eapauth.adr.sll_halen    = ETH_ALEN;
-  eapauth.adr.sll_hatype   = ARPHRD_ETHER;
-  eapauth.adr.sll_ifindex  = if_nametoindex(eapauth.device_name);
-  eapauth.adr.sll_pkttype  = PACKET_BROADCAST;
-  eapauth.adr.sll_protocol = ETH_P_H3C;
-
-  char *const eapol = make_ethernet_header(packet, eapauth.socket, eapauth.device_name);
-  char *const eap   = make_eapol(eapol, EAPOL_START, "", 0);
-  sendto(eapauth.socket, packet, eap - packet, 0,
-      (const struct sockaddr *) &eapauth.adr, sizeof(eapauth.adr));
-  perror("Out::send EAPOL_START");
+  myh3c_t myh3c = {};
+  myh3c_error_t err = myh3c_init(&myh3c, "eth0", argv[1], argv[2]);
+  if (err)
+    goto main_exit;
+  err = myh3c_send_start(&myh3c);
+  if (err)
+    goto main_exit;
   while (1) {
     struct sockaddr_ll sadr = {};
     socklen_t slen = 0;
-    memset(packet, 0, sizeof(packet));
-    recvfrom(eapauth.socket, packet, BUFSIZ, 0, (struct sockaddr *) &sadr, &slen);
-    eap_auth_handle(packet, &eapauth);
+    char packet[BUFSIZ] = "";
+    recvfrom(myh3c.socket, packet, BUFSIZ, 0, (struct sockaddr *) &sadr, &slen);
+    err = myh3c_handle_request(&myh3c, packet);
+    if (err)
+      goto main_exit;
   }
+main_exit:
+  myh3c_destroy(&myh3c);
   return EXIT_SUCCESS;
 }
