@@ -21,6 +21,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "lib/daemon.h"
 #include "lib/shortcuts/shortcuts.h"
 #include "myh3c.h"
 
@@ -54,5 +55,5 @@ int main(int argc, const char *argv[])
   }
 main_exit:
   myh3c_destroy(&myh3c);
-  return EXIT_SUCCESS;
+  return EXIT_FAILURE;
 }
