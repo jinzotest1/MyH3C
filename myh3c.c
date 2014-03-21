@@ -27,10 +27,11 @@
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <netinet/ether.h>
-#include <netpacket/packet.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
+#include "lib/shortcuts/struct.h"
 
 #if DEBUG_DISPLAY_BINARY_DATA == 1
 static
@@ -54,7 +55,8 @@ myh3c_error_t myh3c_init(myh3c_t *myh3c, const char devname[], const char userna
   strcpy(myh3c->password, password);
   strcpy(myh3c->version_info, "\x06\x07""bjQ7SE8BZ3MqHhs3clMregcDY3Y=\x20\x20");
   myh3c->version_info_len = strlen(myh3c->version_info);
-  myh3c->socket           = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_H3C));
+
+  myh3c->socket = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_H3C));
   if (myh3c->socket == EACCES) {
     errno = 0;
     return kMyH3C_Privilege;
@@ -93,9 +95,8 @@ static
 char *make_eapol(char *packet, const uint8_t eapol_type, const char payload[],
     const size_t payload_len)
 {
-  packet[0] = EAPOL_VERSION;
-  packet[1] = eapol_type;
-  *(uint16_t *) &(packet[2]) = htons(payload_len);
+  pack("BBH", packet, (unsigned) EAPOL_VERSION, (unsigned) eapol_type,
+     htons(payload_len));
   memcpy(packet + 4, payload, payload_len);
   return packet + 4 + payload_len;
 }
@@ -105,17 +106,14 @@ char *make_eapol_and_eap(char *packet, const uint8_t eapol_type,
     const uint8_t code, const uint8_t id, const uint8_t eap_type,
     const char data[], const size_t datalen)
 {
-  packet[0] = EAPOL_VERSION;
-  packet[1] = eapol_type;
-  packet[4] = code;
-  packet[5] = id;
   if (code == EAP_SUCCESS || code == EAP_FAILURE) {
-    *(uint16_t *) &(packet[2]) = *(uint16_t *) &(packet[6]) = htons(4);
+    pack("BBHBBH", packet, (unsigned) EAPOL_VERSION, (unsigned) eapol_type,
+       htons(4), (unsigned) code, (unsigned) id, htons(4));
     return packet + 8;
   } else {
-    *(uint16_t *) &(packet[2]) = *(uint16_t *) &(packet[6])
-      = htons(5 + datalen);
-    packet[8] = eap_type;
+    pack("BBHBBHB", packet, (unsigned) EAPOL_VERSION, (unsigned) eapol_type,
+       htons(5 + datalen), (unsigned) code, (unsigned) id, htons(5 + datalen),
+       (unsigned) eap_type);
     memcpy(packet + 9, data, datalen);
     return packet + 9 + datalen;
   }

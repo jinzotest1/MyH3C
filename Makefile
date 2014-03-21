@@ -1,7 +1,7 @@
 CC = gcc
 CFLG = -c -g -Wall
-LDFLG = -lpthread
-SRC = main.c myh3c.c lib/daemon.c user/user.c
+LDFLG =
+SRC = main.c myh3c.c lib/daemon.c lib/shortcuts/struct.c user/user.c
 OBJ = $(SRC:.c=.o)
 EXE = myh3c
 

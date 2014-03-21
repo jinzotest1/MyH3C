@@ -22,9 +22,6 @@
 
 #include <stdio.h>
 
-#include <arpa/inet.h>
-#include <net/if.h>
-#include <netinet/ether.h>
 #include <netpacket/packet.h>
 
 #define ETH_P_H3C             0x888E
