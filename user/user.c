@@ -23,8 +23,7 @@
 
 #define USER_FILE_PATH "user.conf"
 
-#define USER_PATTERN \
-  "username: %s password: %s device_name: %s"
+#define USER_PATTERN "username: %s password: %s device_name: %s"
 
 static user_t create_user()
 {
