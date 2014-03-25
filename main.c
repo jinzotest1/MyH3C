@@ -28,6 +28,7 @@
 #include "myh3c.h"
 #include "user/user.h"
 
+// TODO: under stand sockaddr_ll and RFC for H3C
 int main(int argc, const char *argv[])
 {
   if (getuid() != 0) {

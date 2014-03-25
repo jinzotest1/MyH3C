@@ -16,22 +16,34 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
 
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
-int daemonize(void)
+void daemonize(const char ferr[])
 {
   pid_t pid = fork();
   if (pid < 0)
-    goto daemonize_exit;
+    exit(EXIT_FAILURE);
   else if (pid > 0)
     exit(EXIT_SUCCESS);
+
+  chdir("/");
   umask(0);
   pid_t sid = setsid();
-  if (sid < 0 || chdir("/") < 0)
-    goto daemonize_exit;
-daemonize_exit:
-  return pid;
+  if (sid < 0)
+    exit(EXIT_FAILURE);
+
+  if ((pid = fork()) < 0)
+    exit(EXIT_FAILURE);
+  else if (pid > 0)
+    exit(EXIT_SUCCESS);
+  freopen("/dev/null", "r", stdin);
+  perror("freopen");
+  freopen("/dev/null", "w", stdout);
+  perror("freopen");
+  freopen(ferr, "w", stderr);
+  perror("freopen");
 }

@@ -31,6 +31,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "lib/daemon.h"
 #include "lib/shortcuts/struct.h"
 
 #if DEBUG_DISPLAY_BINARY_DATA == 1
@@ -142,6 +143,7 @@ myh3c_error_t myh3c_handle_request(const myh3c_t *myh3c, char packet[])
 
   if (code == EAP_SUCCESS) {
     printf("In ::Got EAP Success\n");
+    daemonize(MYH3C_ERRLOG_FNAME);
     return kMyH3C_Success;
   }
   else if (code == EAP_FAILURE) {
