@@ -28,17 +28,15 @@
 static user_t create_user()
 {
   FILE *pf = fopen(USER_FILE_PATH, "w");
-
   user_t user;
   printf("%s:\n", "Enter username");
   scanf("%s", user.username);
   printf("%s:\n", "Enter password");
   scanf("%s", user.password);
   printf("%s:\n",
-      "Enter ethernet device name, for newbies, you can simply Enter `eth0' if"
-      " you don't know what it means");
+      "Enter ethernet device name, for newbies, you can simply Enter `eth0' if "
+      "you don't know what it means");
   scanf("%s", user.device_name);
-
   fprintf(pf, USER_PATTERN, user.username, user.password, user.device_name);
   fclose(pf);
   return user;
@@ -48,17 +46,20 @@ user_t read_user(void)
 {
   FILE *pf = fopen(USER_FILE_PATH, "r");
   user_t user = {};
-  if (!pf || 3
-      != fscanf(pf, USER_PATTERN, user.username, user.password, user.device_name))
-  {
+  int scaned = 0;
+  if (pf) {
+    scaned = fscanf(pf, USER_PATTERN, user.username, user.password,
+        user.device_name);
+    fclose(pf);
+  }
+  if (!pf || scaned != 3) {
     fprintf(stderr, "%s\n",
         "No user data exist or user data corrupted, create one?<Y/N>");
     int ch = getchar();
-    if (tolower(ch) == 'y') {
+    if (tolower(ch) == 'y')
       user = create_user(pf);
-    } else
+    else
       exit(EXIT_FAILURE);
   }
-  fclose(pf);
   return user;
 }
