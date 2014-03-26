@@ -34,6 +34,8 @@
 #include "lib/daemon.h"
 #include "lib/shortcuts/struct.h"
 
+#define MYH3C_ERRLOG_FNAME "/tmp/MyH3C-ERRLOG"
+
 #if DEBUG_DISPLAY_BINARY_DATA == 1
 static
 void display_binary_data(const char packet[])

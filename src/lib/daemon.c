@@ -15,9 +15,11 @@
  * Copyright (C) Junyu Wu, shibuyanorailgun@gmail.com, 2014
  */
 
+#include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -40,10 +42,13 @@ void daemonize(const char ferr[])
     exit(EXIT_FAILURE);
   else if (pid > 0)
     exit(EXIT_SUCCESS);
-  freopen("/dev/null", "r", stdin);
-  perror("freopen");
+
+  // FIXME: what cause freopen fail?
+  dup2(open(ferr, O_WRONLY), STDERR_FILENO);
+  perror("freopen stderr");
+  perror("perror itself");
+  errno = 0;
+
   freopen("/dev/null", "w", stdout);
-  perror("freopen");
-  freopen(ferr, "w", stderr);
-  perror("freopen");
+  perror("freopen stdout");
 }

@@ -18,8 +18,6 @@
 #ifndef DAEMON_H
 #define DAEMON_H
 
-#define MYH3C_ERRLOG_FNAME "/tmp/MyH3C/errlog"
-
 void daemonize(const char ferr[]);
 
 #endif /* end of include guard: DAEMON_H */
