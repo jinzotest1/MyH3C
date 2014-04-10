@@ -23,8 +23,6 @@ MyH3C
 	* EAP_TYPE_ID 0x01
 	* EAP_TYPE_MD5 0x04
 
-# TODO: 注意^的符号问题以及长度问题，还有字符串的某些表示
-
 ### 流程简述
 1. 主机向服务器（多播或广播地址）发送EAPOL-Start；
 2. 服务器向主机发送`EAP-REQUEST-ID`要求验证身份的请求；
@@ -33,3 +31,7 @@ MyH3C
 5. 主机向服务器发送`EAP-RESPONSE-MD5_Challenge`回应（其实和MD5毫无关系，= =）；
 6. 服务器向主机发送`EAP-Success`;
 7. 通过Identity-response保持心跳。
+
+### TODOs
+1. 注意^的符号问题以及长度问题，还有字符串的某些表示
+2. 待机处理问题

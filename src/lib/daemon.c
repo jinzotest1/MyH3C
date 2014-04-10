@@ -43,11 +43,8 @@ void daemonize(const char ferr[])
   else if (pid > 0)
     exit(EXIT_SUCCESS);
 
-  // FIXME: what cause freopen fail?
-  dup2(open(ferr, O_WRONLY), STDERR_FILENO);
+  dup2(open(ferr, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR), STDERR_FILENO);
   perror("freopen stderr");
-  perror("perror itself");
-  errno = 0;
 
   freopen("/dev/null", "w", stdout);
   perror("freopen stdout");
