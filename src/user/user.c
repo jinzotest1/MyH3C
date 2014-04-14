@@ -15,6 +15,8 @@
  * Copyright (C) Junyu Wu, shibuyanorailgun@gmail.com, 2014
  */
 
+#define _GNU_SOURCE
+
 #include "user.h"
 
 #include <ctype.h>
