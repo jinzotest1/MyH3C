@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define USER_FILE_PATH "/tmp/MyH3C/user.conf"
+#define USER_FILE_PATH "/etc/MyH3C/user.conf"
 
 #define USER_PATTERN "username: %s password: %s device_name: %s"
 
