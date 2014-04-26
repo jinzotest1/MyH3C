@@ -35,3 +35,4 @@ MyH3C
 ### TODOs
 1. 注意^的符号问题以及长度问题，还有字符串的某些表示
 2. 待机处理问题
+3. Unknown EAP code problem

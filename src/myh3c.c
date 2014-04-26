@@ -15,6 +15,8 @@
  * Copyright (C) Junyu Wu, shibuyanorailgun@gmail.com, 2014
  */
 
+#define _GNU_SOURCE
+
 #include "myh3c.h"
 
 #include <assert.h>
@@ -139,12 +141,11 @@ myh3c_error_t myh3c_handle_request(const myh3c_t *myh3c, char packet[])
   uint8_t type = eapol[1];
   if (type != EAPOL_EAPPACKET) {
     fprintf(stderr, "%s\n", "Error::Got unknown EAP type!");
-    exit(EXIT_FAILURE);
   }
   uint8_t code = eapol[4], id = eapol[5];
 
   if (code == EAP_SUCCESS) {
-    printf("In ::Got EAP Success\n");
+    fprintf(stderr, "In ::Got EAP Success\n");
     daemonize(MYH3C_ERRLOG_FNAME);
     return kMyH3C_Success;
   }
@@ -153,7 +154,7 @@ myh3c_error_t myh3c_handle_request(const myh3c_t *myh3c, char packet[])
     return kMyH3C_Failure;
   }
   else if (code == EAP_RESPONSE) {
-    printf("In ::Got EAP Response\n");
+    fprintf(stderr, "In ::Got EAP Response\n");
     return kMyH3C_Success;
   }
   else if (code == EAP_REQUEST) {
@@ -163,7 +164,7 @@ myh3c_error_t myh3c_handle_request(const myh3c_t *myh3c, char packet[])
     size_t datalen = 0;
 
     if (reqtype == EAP_REQUEST_TYPE_ID) {
-      printf("%s\n", "In ::recv EAP_REQUEST ID");
+      fprintf(stderr, "%s\n", "In ::recv EAP_REQUEST ID");
 
       memcpy(data, myh3c->version_info, myh3c->version_info_len);
       strcpy(data + myh3c->version_info_len, myh3c->username);
@@ -177,7 +178,7 @@ myh3c_error_t myh3c_handle_request(const myh3c_t *myh3c, char packet[])
       perror("Out::send EAP_RESPONSE ID");
     }
     else if (reqtype == EAP_REQUEST_TYPE_MD5) {
-      printf("%s\n", "In ::recv EAP_REQUEST MD5");
+      fprintf(stderr, "%s\n", "In ::recv EAP_REQUEST MD5");
 
       data[0] = reqdata[0];
       uint8_t i;

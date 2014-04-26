@@ -1,5 +1,5 @@
 CC = gcc
-CFLG = -c -g -Wall
+CFLG = -std=c99 -c -g -Wall
 LDFLG =
 SRC = main.c myh3c.c lib/daemon.c lib/shortcuts/struct.c user/user.c
 OBJ = $(SRC:.c=.o)

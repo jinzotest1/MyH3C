@@ -18,6 +18,8 @@
 #ifndef MYH3C_H
 #define MYH3C_H
 
+#define _GNU_SOURCE
+
 #define DEBUG_DISPLAY_BINARY_DATA 0
 
 #include <stdio.h>
