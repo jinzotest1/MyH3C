@@ -18,11 +18,9 @@
 #ifndef MYH3C_H
 #define MYH3C_H
 
-#define _GNU_SOURCE
-
 #define DEBUG_DISPLAY_BINARY_DATA 0
 
-#include <stdio.h>
+#include <cstdio>
 
 #include <netpacket/packet.h>
 
@@ -37,10 +35,19 @@
 #define EAP_REQUEST_TYPE_ID   1
 #define EAP_REQUEST_TYPE_MD5  4
 
+static const size_t USERNAME_MAXLEN = 32;
+
+static const size_t PASSWORD_MAXLEN = 32;
+
+static const size_t DEVICE_NAME_MAXLEN = 32;
+
+static const size_t VERSION_INFO_MAXLEN = 4000;
+
 typedef struct {
-  char username[BUFSIZ], password[BUFSIZ];
-  char device_name[BUFSIZ];
-  char version_info[BUFSIZ];
+  char username[USERNAME_MAXLEN];
+  char password[PASSWORD_MAXLEN];
+  char device_name[DEVICE_NAME_MAXLEN];
+  char version_info[VERSION_INFO_MAXLEN];
   size_t version_info_len;
   int socket;
   struct sockaddr_ll adr;
@@ -55,7 +62,7 @@ myh3c_error_t myh3c_init(myh3c_t *myh3c, const char devname[], const char userna
 
 myh3c_error_t myh3c_send_start(const myh3c_t *myh3c);
 
-myh3c_error_t myh3c_handle_request(const myh3c_t *myh3c, char packet[]);
+myh3c_error_t myh3c_handle_request(const myh3c_t *myh3c, unsigned char packet[]);
 
 myh3c_error_t myh3c_destroy(myh3c_t *myh3c);
 

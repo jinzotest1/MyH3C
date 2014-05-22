@@ -15,9 +15,17 @@
  * Copyright (C) Junyu Wu, shibuyanorailgun@gmail.com, 2014
  */
 
-#ifndef DAEMON_H
-#define DAEMON_H
+#ifndef USER_H
+#define USER_H
 
-void daemonize(const char ferr[]);
+#include <cstdio>
 
-#endif /* end of include guard: DAEMON_H */
+typedef struct user {
+  char username[BUFSIZ];
+  char password[BUFSIZ];
+  char device_name[BUFSIZ];
+} user_t;
+
+user_t read_user(void);
+
+#endif /* end of include guard: USER_H */

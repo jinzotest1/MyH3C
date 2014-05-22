@@ -15,16 +15,14 @@
  * Copyright (C) Junyu Wu, shibuyanorailgun@gmail.com, 2014
  */
 
-#define _GNU_SOURCE
-
 #include "myh3c.h"
 
-#include <assert.h>
-#include <errno.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cassert>
+#include <cerrno>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include <arpa/inet.h>
 #include <net/if.h>
@@ -33,8 +31,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "lib/daemon.h"
-#include "lib/shortcuts/struct.h"
+#include <taskutil/daemon.h>
+#include <miscutil/struct.h>
 
 #define MYH3C_ERRLOG_FNAME "/etc/MyH3C/ERRLOG"
 
@@ -52,13 +50,14 @@ void display_binary_data(const char packet[])
 }
 #endif
 
-myh3c_error_t myh3c_init(myh3c_t *myh3c, const char devname[], const char username[],
-    const char password[])
+myh3c_error_t myh3c_init(myh3c_t *myh3c, const char devname[],
+    const char username[], const char password[])
 {
   strcpy(myh3c->device_name, devname);
   strcpy(myh3c->username, username);
   strcpy(myh3c->password, password);
-  strcpy(myh3c->version_info, "\x06\x07""bjQ7SE8BZ3MqHhs3clMregcDY3Y=\x20\x20");
+  strcpy(myh3c->version_info,
+      "\x06\x07""bjQ7SE8BZ3MqHhs3clMregcDY3Y=\x20\x20");
   myh3c->version_info_len = strlen(myh3c->version_info);
 
   myh3c->socket = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_H3C));
@@ -80,7 +79,8 @@ myh3c_error_t myh3c_init(myh3c_t *myh3c, const char devname[], const char userna
 }
 
 static
-char *make_ethernet_header(char packet[], const int socket, const char devname[])
+unsigned char *make_ethernet_header(unsigned char packet[],
+    const int socket, const char devname[])
 {
   static char macaddr[BUFSIZ] = "";
   struct ifreq ifr = {};
@@ -97,8 +97,8 @@ char *make_ethernet_header(char packet[], const int socket, const char devname[]
 }
 
 static
-char *make_eapol(char *packet, const uint8_t eapol_type, const char payload[],
-    const size_t payload_len)
+unsigned char *make_eapol(unsigned char *packet, const uint8_t eapol_type,
+    const char payload[], const size_t payload_len)
 {
   pack("BBH", packet, (unsigned) EAPOL_VERSION, (unsigned) eapol_type,
      htons(payload_len));
@@ -107,7 +107,7 @@ char *make_eapol(char *packet, const uint8_t eapol_type, const char payload[],
 }
 
 static
-char *make_eapol_and_eap(char *packet, const uint8_t eapol_type,
+unsigned char *make_eapol_and_eap(unsigned char *packet, const uint8_t eapol_type,
     const uint8_t code, const uint8_t id, const uint8_t eap_type,
     const char data[], const size_t datalen)
 {
@@ -126,18 +126,19 @@ char *make_eapol_and_eap(char *packet, const uint8_t eapol_type,
 
 myh3c_error_t myh3c_send_start(const myh3c_t *myh3c)
 {
-  char packet[BUFSIZ];
-  char *const eapol = make_ethernet_header(packet, myh3c->socket, myh3c->device_name);
-  char *const eap   = make_eapol(eapol, EAPOL_START, "", 0);
+  unsigned char packet[BUFSIZ];
+  unsigned char *const eapol = make_ethernet_header(packet,
+      myh3c->socket, myh3c->device_name);
+  unsigned char *const eap   = make_eapol(eapol, EAPOL_START, "", 0);
   sendto(myh3c->socket, packet, eap - packet, 0,
       (const struct sockaddr *) &myh3c->adr, sizeof(myh3c->adr));
   perror("Out::send EAPOL_START");
   return errno ? kMyH3C_Failure : kMyH3C_Success;
 }
 
-myh3c_error_t myh3c_handle_request(const myh3c_t *myh3c, char packet[])
+myh3c_error_t myh3c_handle_request(const myh3c_t *myh3c, unsigned char packet[])
 {
-  char *eapol = packet + ETHER_HDR_LEN, *end = NULL;
+  unsigned char *eapol = packet + ETHER_HDR_LEN, *end = NULL;
   uint8_t type = eapol[1];
   if (type != EAPOL_EAPPACKET) {
     fprintf(stderr, "%s\n", "Error::Got unknown EAP type!");
@@ -159,7 +160,7 @@ myh3c_error_t myh3c_handle_request(const myh3c_t *myh3c, char packet[])
   }
   else if (code == EAP_REQUEST) {
     uint8_t reqtype = eapol[8];
-    const char *reqdata = &(eapol[9]);
+    const unsigned char *reqdata = &(eapol[9]);
     char data[BUFSIZ] = {'\0'};
     size_t datalen = 0;
 

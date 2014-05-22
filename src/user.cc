@@ -15,15 +15,13 @@
  * Copyright (C) Junyu Wu, shibuyanorailgun@gmail.com, 2014
  */
 
-#define _GNU_SOURCE
-
 #include "user.h"
 
-#include <ctype.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cctype>
+#include <cerrno>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include <ifaddrs.h>
 
@@ -31,7 +29,8 @@
 
 #define USER_PATTERN "username: %s password: %s device_name: %s"
 
-static user_t create_user()
+static
+user_t create_user()
 {
   FILE *pf = fopen(USER_FILE_PATH, "w");
   user_t user;
@@ -95,7 +94,7 @@ user_t read_user(void)
         "No user data exist or user data corrupted, create one?<Y/N>");
     int ch = getchar();
     if (tolower(ch) == 'y')
-      user = create_user(pf);
+      user = create_user();
     else
       exit(EXIT_FAILURE);
   }

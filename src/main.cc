@@ -15,31 +15,33 @@
  * Copyright (C) Junyu Wu, shibuyanorailgun@gmail.com, 2014
  */
 
-#define _GNU_SOURCE
-
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include <unistd.h>
 #include <sys/socket.h>
 
-#include "lib/daemon.h"
-#include "lib/shortcuts/shortcuts.h"
-#include "myh3c.h"
-#include "user/user.h"
+#include <taskutil/daemon.h>
+#include <miscutil/shortcut.h>
+
+#include "./myh3c.h"
+#include "./user.h"
+
+static const size_t BUFMAXLEN = 5000;
 
 int main(int argc, const char *argv[])
 {
   if (getuid() != 0) {
-    fprintf(stderr, "Need root privilege to run link layer level application\n");
+    fprintf(stderr, "Need root privilege to run link layer "
+       "level application\n");
     exit(EXIT_FAILURE);
   }
   user_t user = read_user();
   myh3c_t myh3c = {};
-  myh3c_error_t err = myh3c_init(&myh3c, user.device_name, user.username,
-      user.password);
+  myh3c_error_t err = myh3c_init(&myh3c, user.device_name,
+      user.username, user.password);
   if (err)
     goto main_exit;
   err = myh3c_send_start(&myh3c);
@@ -48,8 +50,9 @@ int main(int argc, const char *argv[])
   while (1) {
     struct sockaddr_ll sadr = {};
     socklen_t slen = 0;
-    char packet[BUFSIZ] = "";
-    recvfrom(myh3c.socket, packet, BUFSIZ, 0, (struct sockaddr *) &sadr, &slen);
+    unsigned char packet[BUFMAXLEN] = "";
+    recvfrom(myh3c.socket, packet, BUFMAXLEN, 0,
+        (struct sockaddr *) &sadr, &slen);
     err = myh3c_handle_request(&myh3c, packet);
     if (err)
       goto main_exit;
